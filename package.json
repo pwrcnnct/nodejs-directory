@@ -1,0 +1,22 @@
+{
+  "name": "nodejs-directory",
+  "version": "0.0.1",
+  "description": "nodejs-directory",
+  "main": "index.js",
+  "type": "module",
+  "author": "Josh Duplisea",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1",
+    "start": "node index.js"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/pwrcnnct/nodejs-directory.git"
+  },
+  "license": "ISC",
+  "bugs": {
+    "url": "https://github.com/pwrcnnct/nodejs-directory/issues"
+  },
+  "homepage": "https://github.com/pwrcnnct/nodejs-directory#readme",
+  "dependencies": {}
+}
