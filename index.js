@@ -1,5 +1,7 @@
 //Import Directory Server
-import ndir from './ndir.mjs';
+import ndir from './ndir/ndir.mjs';
 
 //Call Directory Server
-ndir;
+const server = ndir;
+
+server;
