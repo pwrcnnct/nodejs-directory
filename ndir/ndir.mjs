@@ -24,190 +24,213 @@ const mimeType = {
     '.ttf': 'application/x-font-ttf'
 };
 
-const server = http.createServer(async (req, res) => {
-    // extract URL path
-    const sanitizePath = path.normalize(req.url).replace(/^(\.\.[\/\\])+/, '');
-    let pathname = path.join(__dirname, sanitizePath);
-    pathname = pathname.replace(`ndir\\`, '');
-
+const testingLog = async (req) => {
+    const pathname = await sanitization(req);
     console.log(`
 Method: ${req.method}
 Url: ${req.url}
 Pathname: ${pathname}
     `);
+}
 
-    // Handle Files
-    if (!(await fs.stat(pathname)).isDirectory()){
-        // Requesting File
-        console.log(`<=Requesting File...`);
-        // Handling Favicon
-        if (req.url === '/favicon.ico') {
-            res.writeHead(200, {'Content-Type': 'image/x-icon'} );
-            res.end();
-            console.log(`<==Served Favicon...`);
-            return;
-        } else {
-            console.log(`<=Attempting to read file...`);
-            // read file from file system
-            await fs.readFile(pathname)
-                .then(data => {
-                    // based on the URL path, extract the file extention. e.g. .js, .doc, ...
-                    const ext = path.parse(pathname).ext;
-                    // if the file is found, set Content-type and send data
-                    res.setHeader('Content-type', mimeType[ext] || 'text/plain' );
-                    res.end(data);
-                    return;
-                })
-                .catch(err => {
-                    res.statusCode = 500;
-                    console.error(err);
-                    res.end(`Error getting the file: ${err}.`);
-                    return;
-                });
-        }
-    }
-    //Handle Folders
-    if ((await fs.stat(pathname)).isDirectory()){
-        //Requesting File
-        console.log(`<=Requesting Folder...`);
-        // folder control
-        let dirPath = req.url.split('/');
-        let counter = 0, dirArr = [];
-        dirPath = dirPath.map(item => {
-            dirArr != 0 ?
-            dirArr[counter] = path.join((dirArr[counter-1]),item):
-            dirArr[counter] = '/';
-            counter++;
-            return dirArr[counter-1].replace(/\\/g, "/");
-        })
-        await fs.readdir(pathname)
-        .then(data => {
-            let list = data.filter(f => !f.match('ndir'));
-            list = list.filter(f => !f.startsWith('.'));
-            let listStats = {};
-            /*list.forEach(async (item) => {
-                await fs.stat('./'+item)
-                .then(data => {
-                    return listStats[item] = {
-                        data
-                    }
-                })
-                .catch(err => {
-                    throw err;
-                })
-            });*/
-            res.writeHead(200, { 'Content-Type': 'text/html' });
-            res.write(`
-                <!doctype html>
-                    <head>
-                        <title>${req.url}</title>
-                        <meta charset="UTF-8"/>
-                        <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
-                        <meta name="description" content="Free Web tutorials">
-                        <meta name="keywords" content="${list}">
-                        <meta name="author" content="Josh Duplisea">
-                        <style>
-                            body {
+const sanitization = async (req) => {
+    // extract URL path
+    let sanitizePath = path.normalize(req.url).replace(/^(\.\.[\/\\])+/, '');
+    let pathname = path.join(__dirname, sanitizePath);
+    return pathname.replace(`ndir\\`, '');
+}
 
+const isPathDirectory = async (pathname) => {
+    let flag = Boolean;    
+    ((await fs.stat(pathname)).isDirectory())?
+            flag = true:
+            flag = false;
+    return flag;
+}
+
+const fileHandler = async (req, res) => {
+
+    const pathname = await sanitization(req);
+
+    // Requesting File
+    console.log(`<=Requesting File...`);
+
+    // read file from file system
+    await fs.readFile(pathname)
+    .then(data => {
+        // based on the URL path, extract the file extention. e.g. .js, .doc, ...
+        const ext = path.parse(pathname).ext;
+        // if the file is found, set Content-type and send data
+        res.setHeader('Content-type', mimeType[ext] || 'text/plain' );
+        res.end(data);
+        return;
+    })
+    .catch(err => {
+        res.statusCode = 500;
+        console.error(err);
+        res.end(`Error getting the file: ${err}.`);
+        return;
+    });
+}
+
+const folderHandler = async (req, res) => {
+
+    const pathname = await sanitization(req);
+
+    //Requesting File
+    console.log(`<=Requesting Folder...`);
+    // folder control
+    let dirPath = req.url.split('/');
+    let counter = 0, dirArr = [];
+    dirPath = dirPath.map(item => {
+        dirArr != 0 ?
+        dirArr[counter] = path.join((dirArr[counter-1]),item):
+        dirArr[counter] = '/';
+        counter++;
+        return dirArr[counter-1].replace(/\\/g, "/");
+    })
+    await fs.readdir(pathname)
+    .then (data => {
+        let list = data.filter(f => !f.match('ndir'));
+        list = list.filter(f => !f.startsWith('.'));
+        console.log(list)
+        res.writeHead(200, { 'Content-Type': 'text/html' });
+        res.write(`
+            <!doctype html>
+                <head>
+                    <title>${req.url}</title>
+                    <meta charset="UTF-8"/>
+                    <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+                    <meta name="description" content="Free Web tutorials">
+                    <meta name="keywords" content="${list}">
+                    <meta name="author" content="Josh Duplisea">
+                    <style>
+                        body {
+
+                        }
+                        header {
+
+                        }
+                        .settings {
+
+                        }
+                        .search {
+
+                        }
+                        nav {
+                            padding: 10px 16px;
+                            background-color: #eee;
+                            display: inline;
+                            font-size: 18px;
+                        }
+                            nav item+item:before {
+                                padding: 8px;
+                                color: black;
+                                content: "\\203A";
                             }
-                            header {
-
+                            nav a {
+                                color: #0275d8;
+                                text-decoration: none;
                             }
-                            .settings {
-
+                            nav a:hover {
+                                color: #01447e;
+                                text-decoration: underline;
                             }
-                            .search {
+                        aside {
 
-                            }
-                            .breadcrumb {
+                        }
+                        main {
 
-                            }
-                            aside {
+                        }
+                        .custom-header {
 
-                            }
-                            main {
+                        }
+                        .directory-listing {
 
-                            }
-                            .custom-header {
+                        }
+                        .custom-footer {
 
-                            }
-                            .directory-listing {
+                        }
+                    </style>
+                </head>
+                <body>
 
-                            }
-                            .custom-footer {
+                    <!-- HEADER -->
+                    <header>
+                        <!-- SETTINGS -->
+                        <section class="settings">
+                    
+                        </section>
 
-                            }
-                        </style>
-                    </head>
-                    <body>
-
-                        <!-- HEADER -->
-                        <header>
-                            <!-- SETTINGS -->
-                            <section class="settings">
+                        <!-- SEARCH -->
+                        <section class="search">
                         
-                            </section>
+                        </section>
 
-                            <!-- SEARCH -->
-                            <section class="search">
-                            
-                            </section>
+                        <!-- BREADCRUMB -->
+                        <nav>
+                            ${(req.url == '/')?
+                                `<item><a href="/">/</a></item>`:
+                                Object.keys(dirPath).map(key => (
+                                `<item><a href="${dirPath[key]}">${dirPath[key]}</a></item>`
+                            )).join('')}
+                        </nav>
+                    </header>
 
-                            <!-- BREADCRUMB -->
-                            <section class="breadcrumb">
-                                <nav>${(req.url == '/')?
-                                    `<a href="/">/</a>`:
-                                    Object.keys(dirPath).map(key => (
-                                    `<a href="${dirPath[key]}">${dirPath[key]}</a>`
-                                    )).join('')}
-                                </nav>
-                            </section>
-                        </header>
+                    <!-- TREE VIEW -->
+                    <aside>
+                        <!-- Todo Create Tree Struct -->
+                    </aside>
+                    
+                    <!-- MAIN -->
+                    <main>
 
-                        <!-- TREE VIEW -->
-                        <aside>
-                            <!-- Todo Create Tree Struct -->
-                        </aside>
+                        <!-- CUSTOM HEADER -->
+                        <section class="custom-header">
                         
-                        <!-- MAIN -->
-                        <main>
+                        </section>
 
-                            <!-- CUSTOM HEADER -->
-                            <section class="custom-header">
-                            
-                            </section>
+                        <!-- LISTING -->
+                        <section class="directory-listing">
+                                <ul>${Object.keys(list).map(key => (
+                                    `<li>
+                                        <a href="${(req.url == '/')?('/'+list[key]):(req.url+'/'+list[key])}">
+                                            ${list[key]}
+                                        </a>
+                                    </li>`
+                                )).join('')}</ul>
+                        </section>
 
-                            <!-- LISTING -->
-                            <section class="directory-listing">
-                                    <ul>${Object.keys(list).map(key => (
-                                        `<li>
-                                            <a href="${(req.url == '/')?('/'+list[key]):(req.url+'/'+list[key])}">
-                                                ${list[key]}
-                                            </a>
-                                            <span>${console.log(listStats)}</span>
-                                        </li>`
-                                    )).join('')}</ul>
-                            </section>
+                        <!-- CUSTOM FOOTER -->
+                        <section class="custom-footer">
+                        
+                        </section>
+                    </main>
+                </body>
+            </html>
+        `);
+        res.end();
+        return;
+    })
+    .catch(err => {
+        res.statusCode = 500;
+        console.error(err);
+        res.end(`Error getting the folder: ${err}.`);
+        return;
+    })
+}
 
-                            <!-- CUSTOM FOOTER -->
-                            <section class="custom-footer">
-                            
-                            </section>
-                        </main>
-                    </body>
-                </html>
-            `);
-            res.end();
-            return;
-        })
-        .catch(err => {
-            res.statusCode = 500;
-            console.error(err);
-            res.end(`Error getting the folder: ${err}.`);
-            return;
-        })
-        
+const server = http.createServer(async (req, res) => {
+
+    testingLog(req);
+
+    const isDirectory = await isPathDirectory(await sanitization(req));
+    if (isDirectory) {
+        folderHandler(req, res);
+    } else {
+        fileHandler(req, res);
     }
 });
+
 //Export Directory Server
 export default server.listen(port, () => console.log(`Server Running on port ${port}`) );
