@@ -58,7 +58,7 @@ export default class Server {
 const getPathname  = async (pathUrl) => {
     let sanitizePath = path.normalize(pathUrl).replace(/^(\.\.[\/\\])+/, '');
     let pathname = path.join(__dirname, sanitizePath);
-    return pathname.replace(`ndir\\`, '');
+    return pathname.replace(`node-directory\\`, '');
 }
 
 //Testing Console.
@@ -103,16 +103,13 @@ const fileHandler = async (serverData) => {
 const folderHandler = async (serverData) => {
     //Requesting Folder
     console.log(`============== Directory Requested =============`);
-    // Folder control
-    let dP = serverData.request.url.split('/'),cntr = 0, dA = [];
-    dP = dP.map(itm => {
-        dA != 0 ? dA[cntr] = path.join((dA[cntr-1]),itm): dA[cntr] = '/';
-        cntr++;
-        return dA[cntr-1].replace(/\\/g, "/");
-    });
+    
+    // Breadcrumbing
+    const breadCrumb = await getBreadCrumb(serverData);
+
     await fs.readdir(serverData.pathname)
-    .then (data => {
-        let list = data.filter(f => !f.match('ndir'));
+    .then (async data => {
+        let list = data.filter(f => !f.match('node-directory'));
         list = list.filter(f => !f.startsWith('.'));
         serverData.response.writeHead(200, { 'Content-Type': 'text/html' });
         serverData.response.write(`
@@ -189,11 +186,7 @@ const folderHandler = async (serverData) => {
 
                         <!-- BREADCRUMB -->
                         <nav>
-                            ${(serverData.request.url == '/')?
-                                `<item><a href="/">/</a></item>`:
-                                Object.keys(dP).map(key => (
-                                `<item><a href="${dP[key]}">${dP[key]}</a></item>`
-                            )).join('')}
+                            ${breadCrumb}
                         </nav>
                     </header>
 
@@ -240,4 +233,19 @@ const folderHandler = async (serverData) => {
         serverData.response.end(`Error getting the folder: ${err}.`);
         return;
     })
+}
+
+//Get Breadcrumb for Current Route
+const getBreadCrumb = async (serverData) => {
+    // Folder control
+    let dP = serverData.request.url.split('/'),cntr = 0, dA = [], breadCrumb = '';
+    dP = await dP.map(itm => {
+        dA != 0 ? dA[cntr] = path.join((dA[cntr-1]),itm): dA[cntr] = '/';
+        cntr++;
+        return dA[cntr-1].replace(/\\/g, "/");
+    });
+    (serverData.request.url == '/')?
+    breadCrumb = `<item><a href="/">/</a></item>`:
+    breadCrumb = Object.keys(dP).map(key => (`<item><a href="${dP[key]}">${dP[key]}</a></item>`)).join('');
+    return breadCrumb;
 }
