@@ -1,9 +1,9 @@
+//Imports and Global Variables
 import fs from 'node:fs/promises';
 import http from 'node:http';
 import URL from 'url';
 import path from 'node:path';
 
-const port = process.env.port || 80;
 const __dirname = path.dirname(URL.fileURLToPath(import.meta.url));
 const mimeType = {
     '.ico': 'image/x-icon',
@@ -24,22 +24,51 @@ const mimeType = {
     '.ttf': 'application/x-font-ttf'
 };
 
-const testingLog = async (req) => {
-    const pathname = await sanitization(req);
-    console.log(`
-Method: ${req.method}
-Url: ${req.url}
-Pathname: ${pathname}
-    `);
+//Export Directory Server
+export default class Server {
+	constructor(port, server) {
+		this.port = port || 1337;
+		this.app = http.createServer(async (req, res) => {         
+            //Server Data Object
+            let serverData = {
+                'request': req,
+                'response': res,
+                'pathname': await getPathname(req.url)
+            }
+            
+            //Testing 
+            testingLog(serverData);
+        
+            //Request Routing for Folder or for File.
+            (await isPathDirectory(serverData.pathname))?
+            
+            //Render's Directory View
+            folderHandler(serverData):
+            
+            //Render's File View
+            fileHandler(serverData);
+        });
+	}
+    listen(){
+        this.app.listen(this.port,() =>{ console.log(`Server Running on port ${this.port}`);});
+    }
 }
 
-const sanitization = async (req) => {
-    // extract URL path
-    let sanitizePath = path.normalize(req.url).replace(/^(\.\.[\/\\])+/, '');
+//Path Sanitization
+const getPathname  = async (pathUrl) => {
+    let sanitizePath = path.normalize(pathUrl).replace(/^(\.\.[\/\\])+/, '');
     let pathname = path.join(__dirname, sanitizePath);
     return pathname.replace(`ndir\\`, '');
 }
 
+//Testing Console.
+const testingLog = async (sD) => console.log(`
+MTD: ${sD.request.method}
+URL: ${sD.request.url}
+PTH: ${sD.pathname}`
+);
+
+//Directory or File Switch Function.
 const isPathDirectory = async (pathname) => {
     let flag = Boolean;    
     ((await fs.stat(pathname)).isDirectory())?
@@ -48,57 +77,48 @@ const isPathDirectory = async (pathname) => {
     return flag;
 }
 
-const fileHandler = async (req, res) => {
-
-    const pathname = await sanitization(req);
-
-    // Requesting File
-    console.log(`<=Requesting File...`);
-
+//File Handler if Request is a File
+const fileHandler = async (serverData) => {
+    //Requesting File
+    console.log(`================ File Requested ================`);
     // read file from file system
-    await fs.readFile(pathname)
+    await fs.readFile(serverData.pathname)
     .then(data => {
         // based on the URL path, extract the file extention. e.g. .js, .doc, ...
-        const ext = path.parse(pathname).ext;
+        const ext = path.parse(serverData.pathname).ext;
         // if the file is found, set Content-type and send data
-        res.setHeader('Content-type', mimeType[ext] || 'text/plain' );
-        res.end(data);
+        serverData.response.setHeader('Content-type', mimeType[ext] || 'text/plain' );
+        serverData.response.end(data);
         return;
     })
     .catch(err => {
-        res.statusCode = 500;
+        serverData.response.statusCode = 500;
         console.error(err);
-        res.end(`Error getting the file: ${err}.`);
+        serverData.response.end(`Error getting the file: ${err}.`);
         return;
     });
 }
 
-const folderHandler = async (req, res) => {
-
-    const pathname = await sanitization(req);
-
-    //Requesting File
-    console.log(`<=Requesting Folder...`);
-    // folder control
-    let dirPath = req.url.split('/');
-    let counter = 0, dirArr = [];
-    dirPath = dirPath.map(item => {
-        dirArr != 0 ?
-        dirArr[counter] = path.join((dirArr[counter-1]),item):
-        dirArr[counter] = '/';
-        counter++;
-        return dirArr[counter-1].replace(/\\/g, "/");
-    })
-    await fs.readdir(pathname)
+//Directory Handler if Request is a Directory
+const folderHandler = async (serverData) => {
+    //Requesting Folder
+    console.log(`============== Directory Requested =============`);
+    // Folder control
+    let dP = serverData.request.url.split('/'),cntr = 0, dA = [];
+    dP = dP.map(itm => {
+        dA != 0 ? dA[cntr] = path.join((dA[cntr-1]),itm): dA[cntr] = '/';
+        cntr++;
+        return dA[cntr-1].replace(/\\/g, "/");
+    });
+    await fs.readdir(serverData.pathname)
     .then (data => {
         let list = data.filter(f => !f.match('ndir'));
         list = list.filter(f => !f.startsWith('.'));
-        console.log(list)
-        res.writeHead(200, { 'Content-Type': 'text/html' });
-        res.write(`
+        serverData.response.writeHead(200, { 'Content-Type': 'text/html' });
+        serverData.response.write(`
             <!doctype html>
                 <head>
-                    <title>${req.url}</title>
+                    <title>${serverData.request.url}</title>
                     <meta charset="UTF-8"/>
                     <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
                     <meta name="description" content="Free Web tutorials">
@@ -169,10 +189,10 @@ const folderHandler = async (req, res) => {
 
                         <!-- BREADCRUMB -->
                         <nav>
-                            ${(req.url == '/')?
+                            ${(serverData.request.url == '/')?
                                 `<item><a href="/">/</a></item>`:
-                                Object.keys(dirPath).map(key => (
-                                `<item><a href="${dirPath[key]}">${dirPath[key]}</a></item>`
+                                Object.keys(dP).map(key => (
+                                `<item><a href="${dP[key]}">${dP[key]}</a></item>`
                             )).join('')}
                         </nav>
                     </header>
@@ -194,7 +214,9 @@ const folderHandler = async (req, res) => {
                         <section class="directory-listing">
                                 <ul>${Object.keys(list).map(key => (
                                     `<li>
-                                        <a href="${(req.url == '/')?('/'+list[key]):(req.url+'/'+list[key])}">
+                                        <a href="${(serverData.request.url == '/')?
+                                            ('/'+list[key]):
+                                            (serverData.request.url+'/'+list[key])}">
                                             ${list[key]}
                                         </a>
                                     </li>`
@@ -209,28 +231,13 @@ const folderHandler = async (req, res) => {
                 </body>
             </html>
         `);
-        res.end();
+        serverData.response.end();
         return;
     })
     .catch(err => {
-        res.statusCode = 500;
+        serverData.response.statusCode = 500;
         console.error(err);
-        res.end(`Error getting the folder: ${err}.`);
+        serverData.response.end(`Error getting the folder: ${err}.`);
         return;
     })
 }
-
-const server = http.createServer(async (req, res) => {
-
-    testingLog(req);
-
-    const isDirectory = await isPathDirectory(await sanitization(req));
-    if (isDirectory) {
-        folderHandler(req, res);
-    } else {
-        fileHandler(req, res);
-    }
-});
-
-//Export Directory Server
-export default server.listen(port, () => console.log(`Server Running on port ${port}`) );
