@@ -1,7 +1,8 @@
 //Import Directory Server
-import ndir from './ndir/ndir.mjs';
+import nodeDirectory from './node-directory/main.mjs';
 
-//Create an Instance of Node Directory and Listen for Requests
-const server = new ndir(80);
+//Create an Instance of Node Directory
+const server = new nodeDirectory(80);
 
+//Listen for Requests
 server.listen();
