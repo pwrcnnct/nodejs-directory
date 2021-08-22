@@ -1,0 +1,19 @@
+nav {
+    padding: 10px 16px;
+    background-color: #eee;
+    display: inline;
+    font-size: 18px;
+}
+    nav item+item:before {
+        padding: 8px;
+        color: black;
+        content: "\203A";
+    }
+    nav a {
+        color: #0275d8;
+        text-decoration: none;
+    }
+    nav a:hover {
+        color: #01447e;
+        text-decoration: underline;
+    }
