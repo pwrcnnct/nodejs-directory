@@ -1,77 +1,37 @@
-//Import System Components
-import {stat, readdir} from 'node:fs/promises';
+// Import System Components
 import {createServer} from 'node:http';
-import {fileURLToPath} from 'url';
-import {dirname, normalize, join} from 'node:path';
-
-//Import Application Components
+// Import Application Components
+import Route from './components/route.js'
 import Folder from './components/folder.js';
 import File from './components/file.js';
-
-const __dirname = dirname(fileURLToPath(import.meta.url));
-
-//Export Directory Server
+// Export Directory Server
 export default class Server {
-	constructor(port, server) {
+    // Application Server Initialization
+	constructor(port) {
 		this.port = port || 1337;
-		this.app = createServer(async (req, res) => {         
-            //Server Data Object
-            let pathname = await getPathname(req.url);
-            let root = pathname.replace(req.url.replace(/\//g, '\\'), '');
-            let serverData = {
-                'request': req,
-                'response': res,
-                'pathname': pathname,
-                'root': root,
-                'list': await isPathDirectory(pathname)?await readDirectory(pathname):'',
-                'isDirectory': await isPathDirectory(pathname)
-            }
-
-            //Request Routing for Folder or for File.
-            serverData.isDirectory?
-            
-            //Render's Directory View
-            await new Folder().getFolder(serverData):
-            
-            //Render's File View
-            await new File().getFile(serverData);
-
-            //Testing 
-            testingLog(serverData);
+		// Directory Server
+        this.app = createServer(async (req, res) => {         
+            // Gather Route Details
+            new Route(res, req)
+            .then(async sD => {
+                // Request Routing for Folder or for File.
+                sD.isDirectory?          
+                // Render's Directory View
+                new Folder(sD):          
+                // Render's File View
+                new File(sD);
+                // Testing 
+                console.log(`Is Directory?: ${  await sD.isDirectory}`);
+                console.log(`Method: ${  await sD.request.method}`);
+                console.log(`Url: ${  await sD.request.url}`);
+                console.log(`Path: ${  await sD.pathname}`);
+                console.log(`Root: ${  await sD.root}`);
+                console.log(`List: ${  await sD.list}`);
+            })
         });
 	}
+    // Listen for Requests on Port
     listen(){
-        this.app.listen(this.port,() =>{ console.log(`Server Running on port ${this.port}`);});
+        this.app.listen(this.port,() =>{ console.log(`Server Running on port ${this.port}`)});
     }
 }
-
-//Path Sanitization
-const getPathname  = async (pth) => {
-    let sanitizedPth = normalize(pth).replace(/^(\.\.[\/\\])+/, '');
-    let pathname = join(__dirname, sanitizedPth);
-    return pathname.replace(`node-directory\\`, '');
-}
-
-// Directory or File Switch Function.
-const isPathDirectory = async (pth) => {
-    let flag = Boolean;    
-    ((await stat(pth)).isDirectory())?
-            flag = true:
-            flag = false;
-    return flag;
-}
-
-//Read Directory
-const readDirectory = async (pth) => {
-    return await readdir(pth);
-}
-
-//Testing Console.
-const testingLog = async (sD) => console.log(`
-Method: ${  await sD.request.method} 
-Request: ${  await sD.request.url} 
-Path: ${  await sD.pathname} 
-Root: ${  await sD.root} 
-List: ${  await sD.list}
-Is Directory?: ${  await sD.isDirectory}`
-);

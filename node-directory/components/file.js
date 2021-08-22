@@ -1,7 +1,7 @@
-//Import System Components
+// Import System Components
 import {readFile} from 'node:fs/promises';
 import {parse} from 'node:path';
-
+// Mime Types
 const mimeType = {
     '.ico': 'image/x-icon',
     '.html': 'text/html',
@@ -20,8 +20,11 @@ const mimeType = {
     '.eot': 'application/vnd.ms-fontobject',
     '.ttf': 'application/x-font-ttf'
 };
-
+// Export File Object
 export default class File {
+    constructor(sD){
+        return this.getFile(sD);
+    }
     async getFile(sD){
         // Requesting File
         console.log(`================ File Requested ================`);

@@ -1,18 +1,20 @@
-//Import System Components
+// Import System Components
 import {join} from 'node:path';
-
+// Export Folder Object
 export default class Folder {
+    // Initialize Folder Object
+    constructor(sD){
+        return this.getFolder(sD);
+    }
     // Directory Handler if Request is a Directory
     async getFolder(sD) {
         // Requesting Folder
         console.log(`============== Directory Requested =============`);
-        
         // Breadcrumbing
         const breadCrumb = await this.getBreadCrumb(sD);
-
         // Get Directory Listing
         const directoryListing = await this.getView(sD);
-
+        // Render Directory Listing View
         sD.response.writeHead(200, { 'Content-Type': 'text/html' });
         sD.response.write(`
             <!doctype html>
@@ -57,7 +59,6 @@ export default class Folder {
         `);
         sD.response.end();
     }
-
     // Get Directory Listing for Current Route
     async getView(sD) {
         // Filter Listing to Ignore Internals and Hidden Files
@@ -75,7 +76,6 @@ export default class Folder {
         // Return List String
         return lsStr;
     }
-
     // Get Breadcrumb for Current Route
     async getBreadCrumb(sD) {
         // Split Current Route by Forward Slash (/)
