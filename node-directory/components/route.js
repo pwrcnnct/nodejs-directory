@@ -7,11 +7,12 @@ const __dirname = dirname(fileURLToPath(import.meta.url));
 // Route Data Model
 export default class Route {
     // Building Server Data
-    constructor(res, req) {
-        return this.getData(res, req);
+    constructor(req, res) {
+        this.req = req;
+        this.res = res;
     }
     // Returns a Server Data Object
-    async getData(res, req){
+    async getData(req = this.req, res = this.res){
         //Server Data Object
         let pathname = await this.getPathname(req.url);
         let root = pathname.replace(req.url.replace(/\//g, '\\'), '');

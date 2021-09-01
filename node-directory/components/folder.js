@@ -4,10 +4,10 @@ import {join} from 'node:path';
 export default class Folder {
     // Initialize Folder Object
     constructor(sD){
-        return this.getFolder(sD);
+        this.sD = sD;
     }
     // Directory Handler if Request is a Directory
-    async getFolder(sD) {
+    async getFolder(sD = this.sD) {
         // Requesting Folder
         console.log(`============== Directory Requested =============`);
         // Breadcrumbing

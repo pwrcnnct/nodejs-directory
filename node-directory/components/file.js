@@ -23,14 +23,13 @@ const mimeType = {
 // Export File Object
 export default class File {
     constructor(sD){
-        return this.getFile(sD);
+        this.sD = sD;
     }
-    async getFile(sD){
+    async getFile(sD = this.sD){
         // Requesting File
         console.log(`================ File Requested ================`);
         // read file from file system
-        await readFile(sD.pathname)
-        .then(data => {
+        await readFile(sD.pathname).then(data => {
             // based on the URL path, extract the file extention. e.g. .js, .doc, ...
             const ext = parse(sD.pathname).ext;
             // if the file is found, set Content-type and send data
